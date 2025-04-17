@@ -1,55 +1,74 @@
 pipeline {
     agent any
+
     environment {
-        DOCKER_IMAGE = 'nodejs-app:latest'
-        DOCKER_REGISTRY = 'root'
-        GIT_REPO = 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git' 
+        IMAGE_NAME = 'node-docker-demo'
+        GIT_REPO_URL = 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git'
+        GIT_BRANCH = 'master'  // Update this if you're using a different branch, like 'master'
     }
+
     stages {
-        stage('Checkout') {
+        stage('Clone Repo') {
             steps {
                 script {
-                    git branch: 'main', url: "${GIT_REPO}"
+                    // Check out the correct branch from GitHub
+                    git url: "${GIT_REPO_URL}", branch: "${GIT_BRANCH}"
                 }
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    bat 'docker build -t ${DOCKER_IMAGE} .'
+                    // Check if Docker is installed
+                    sh 'docker --version'
+                    
+                    // Build the Docker image
+                    sh "docker build -t $IMAGE_NAME ."
                 }
             }
         }
+
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    // Stop and remove any existing container with the same name
+                    sh "docker rm -f $IMAGE_NAME || true"
+                    
+                    // Run a new container
+                    sh "docker run -d -p 3000:3000 --name $IMAGE_NAME $IMAGE_NAME"
+                }
+            }
+        }
+
         stage('Push Docker Image to Registry') {
             steps {
                 script {
                     // Log in to Docker Hub (if needed)
-                    bat 'echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin'
-                    
-                    // Tag the image with your Docker Hub registry
-                    bat 'docker tag ${DOCKER_IMAGE} ${DOCKER_REGISTRY}/${DOCKER_IMAGE}'
+                    // sh "docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD"
 
-                    // Push the Docker image to Docker Hub
-                    bat 'docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE}'
+                    // Optionally, push the image to Docker registry (Uncomment if needed)
+                    // sh "docker push $IMAGE_NAME"
                 }
             }
         }
-        stage('Deploy to Production') {
+
+        stage('Clean Up') {
             steps {
                 script {
-                    bat '''
-                        docker pull ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
-                        docker stop nodejs-app || echo "No container to stop"
-                        docker rm nodejs-app || echo "No container to remove"
-                        docker run -d --name nodejs-app -p 80:3000 ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
-                    '''
+                    // Clean up old images/containers if needed
+                    // sh "docker system prune -f"
                 }
             }
         }
     }
+
     post {
-        always {
-            bat 'docker logout'
+        success {
+            echo 'NodeJS App deployed successfully using Docker!'
+        }
+        failure {
+            echo 'Build failed. Check console for errors.'
         }
     }
 }
