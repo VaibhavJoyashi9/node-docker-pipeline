@@ -1,8 +1,7 @@
-pipeline {
+ pipeline {
     agent any
 
     environment {
-        // Set your image name and GitHub repository details
         IMAGE_NAME = 'node-docker-demo'
         GIT_REPO_URL = 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git'
         GIT_BRANCH = 'master'  
@@ -22,7 +21,7 @@ pipeline {
                 script {
                     sh 'docker --version'
 
-                    sh "docker build -t $IMAGE_NAME ."
+                    sh "docker build -t ${IMAGE_NAME} ."
                 }
             }
         }
@@ -30,9 +29,9 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    sh "docker rm -f $IMAGE_NAME || true"
+                    sh "docker rm -f ${IMAGE_NAME} || true"
                     
-                    sh "docker run -d -p 3000:3000 --name $IMAGE_NAME $IMAGE_NAME"
+                    sh "docker run -d -p 3000:3000 --name ${IMAGE_NAME} ${IMAGE_NAME}"
                 }
             }
         }
