@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Set your image name and GitHub repository details
         IMAGE_NAME = 'node-docker-demo'
-        GIT_REPO_URL = 'https://github.com/yourusername/your-repo.git'
+        GIT_REPO_URL = 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git'
         GIT_BRANCH = 'master'  
     }
 
