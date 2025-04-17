@@ -1,50 +1,55 @@
 pipeline {
     agent any
-
     environment {
-        IMAGE_NAME = 'node-docker-demo'
-        IMAGE_TAG = "${BUILD_ID}"  
+        DOCKER_IMAGE = 'nodejs-app:latest'
+        DOCKER_REGISTRY = 'root'
+        GIT_REPO = 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git' 
     }
-
     stages {
-        stage('Clone Repo') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/VaibhavJoyashi9/node-docker-pipeline.git'
+                script {
+                    git branch: 'main', url: "${GIT_REPO}"
+                }
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker info'
-
-                    sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
+                    bat 'docker build -t ${DOCKER_IMAGE} .'
                 }
             }
         }
-
-        stage('Run Docker Container') {
+        stage('Push Docker Image to Registry') {
             steps {
                 script {
-                    sh "docker rm -f $IMAGE_NAME || true"
+                    // Log in to Docker Hub (if needed)
+                    bat 'echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin'
                     
-                    sh "docker run -d -p 3000:3000 --name $IMAGE_NAME $IMAGE_NAME:$IMAGE_TAG"
+                    // Tag the image with your Docker Hub registry
+                    bat 'docker tag ${DOCKER_IMAGE} ${DOCKER_REGISTRY}/${DOCKER_IMAGE}'
+
+                    // Push the Docker image to Docker Hub
+                    bat 'docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE}'
+                }
+            }
+        }
+        stage('Deploy to Production') {
+            steps {
+                script {
+                    bat '''
+                        docker pull ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
+                        docker stop nodejs-app || echo "No container to stop"
+                        docker rm nodejs-app || echo "No container to remove"
+                        docker run -d --name nodejs-app -p 80:3000 ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
+                    '''
                 }
             }
         }
     }
-
     post {
-        success {
-            echo 'NodeJS App deployed successfully using Docker!'
-        }
-        failure {
-            echo 'Build failed. Check console for errors.'
-
-            script {
-                sh "docker rm -f $IMAGE_NAME || true"
-                sh "docker rmi -f $IMAGE_NAME:$IMAGE_TAG || true"
-            }
+        always {
+            bat 'docker logout'
         }
     }
 }
